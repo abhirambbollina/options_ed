@@ -1,46 +1,50 @@
-
 import streamlit as st
-
 import matplotlib.pyplot as plt
 import pandas as pd
-#import stockdata as sd
-#import black_scholes
+import stockchart as scht
+import black_scholes
 import yfinance as yf
-
 from datetime import datetime, timedelta
-
 
 st.title("Black-Scholes Options Pricing Tool")
 st.write("This tool allows you to calculate the price of European call and put options using the Black-Scholes model.")
-with st.form("stock_form"):
-    ticker = st.text_input("Enter stock ticker (e.g., AAPL):", "")
-    submitted = st.form_submit_button("Submit")
 
 
-if submitted and ticker:
-    end_date = datetime.today()
-    start_date = end_date - timedelta(days=30)
+if "ticker" not in st.session_state:
+    st.session_state["ticker"] = ""
+if "data" not in st.session_state:
+    st.session_state["data"] = None
+if "submitted" not in st.session_state:
+    st.session_state["submitted"] = False
 
-    # Fetch data
-    data = yf.download(ticker, start=start_date.strftime('%Y-%m-%d'), end=end_date.strftime('%Y-%m-%d'))
 
-    if not data.empty:
-        st.subheader(f"Closing Price for {ticker.upper()} (Last 30 Days)")
-    
-       
-        fig, ax = plt.subplots(figsize=(10, 5))
-        ax.plot(data.index.strftime("%m/%d"), data["Close"], label="Close Price", color="green", linewidth=2)
-        ax.set_xlabel("Date", color='white')
-        ax.set_ylabel("Price (USD)", color='white')
-        ax.set_title(f"{ticker.upper()} - Closing Prices", color='white')
-        ax.tick_params(axis='x', colors='white')
-        ax.tick_params(axis='y', colors='white')
-        ax.grid(True, color='white')
-        plt.xticks(rotation=45)
-        ax.set_facecolor('black')
-        fig.patch.set_facecolor('black')
+ticker_input = st.text_input("Enter stock ticker (e.g., AAPL):", value=st.session_state["ticker"])
+if st.button("Submit"):
+    if ticker_input:
+        end_date = datetime.today()
+        start_date = end_date - timedelta(days=30)
 
-        st.pyplot(fig)
+        data = yf.download(ticker_input, start=start_date.strftime('%Y-%m-%d'), end=end_date.strftime('%Y-%m-%d'))
+
+        if data.empty:
+            st.error("No data found. Check the ticker symbol.")
+            st.session_state["submitted"] = False
+        else:
+            # Store in session_state
+            st.session_state["ticker"] = ticker_input
+            st.session_state["data"] = data
+            st.session_state["submitted"] = True
     else:
-        st.error("No data found. Check the ticker symbol.")
+        st.error("Please enter a valid ticker.")
+
+
+if st.session_state["submitted"] and st.session_state["data"] is not None:
+    st.subheader(f"Closing Price for {st.session_state['ticker'].upper()} (Last 30 Days)")
+    st.pyplot(scht.stock_plot_30d(st.session_state["ticker"], st.session_state["data"]))
+
+    
+
+
+
+
 
