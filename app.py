@@ -16,11 +16,17 @@ if "data" not in st.session_state:
     st.session_state["data"] = None
 if "ticker_submitted" not in st.session_state:
     st.session_state["ticker_submitted"] = False
+if "r" not in st.session_state:
+    st.session_state["r"] = 0.0
+if "sig" not in st.session_state:
+    st.session_state["sig"] = 0.0
+if "option_submitted" not in st.session_state:
+    st.session_state["option_submitted"] = False
 
 
 ticker_input = st.text_input("Enter stock ticker (e.g., AAPL):", value=st.session_state["ticker"])
 if st.button("Submit"):
-    if ticker_input:
+    if ticker_input and (ticker_input != st.session_state["ticker"] or not st.session_state["ticker_submitted"]):
         end_date = datetime.today()
         start_date = end_date - timedelta(days=30)
 
@@ -33,6 +39,9 @@ if st.button("Submit"):
             st.session_state["ticker"] = ticker_input
             st.session_state["data"] = data
             st.session_state["ticker_submitted"] = True
+            st.session_state["r"] = float(yf.Ticker("^TNX").history(period="1d")["Close"].iloc[-1]/100)
+            st.session_state["sig"] = bsm.historical_volatility(yf.download(st.session_state["ticker"], period="6mo", interval="1d"))
+
     else:
         st.error("Please enter a valid ticker.")
 
@@ -44,24 +53,28 @@ if st.session_state["ticker_submitted"] and st.session_state["data"] is not None
 
     st.subheader("Black-Scholes Option Pricing")
     
-    # Historical volatility calculation
-    
-    S = float(st.session_state["data"]["Close"].iloc[-1])
-    r = float(yf.Ticker("^TNX").history(period="1d")["Close"].iloc[-1]/100)
-    sig = bsm.historical_volatility(yf.download(st.session_state["ticker"], period="6mo", interval="1d"))
+    option_type = st.selectbox("Select Option Type:", options=["Call", "Put"], key="option_type")
 
+    S = float(st.session_state["data"]["Close"].iloc[-1])
+    r = st.session_state["r"]
+    sig = st.session_state["sig"]
     K = float(st.number_input("Strike Price (K):", value=float(S), step=2.5))
     T = float(st.number_input("Time to Maturity (in years):", value=1.0, step=0.01))
+
+    if st.button("Calculate Option Price"):
+        if K and T and K >= 0 and T > 0 and option_type in ["Call", "Put"]:
+            st.session_state["option_submitted"] = True
+        else:
+            st.error("Invalid input for Strike Price or Time to Maturity. Please enter valid values.")
+            st.session_state["option_submitted"] = False
     
-
-    if st.button("Calculate Call Option Price"):
-        call_price = bsm.bs_call(S, K, T, r, sig)
-        st.success(f"Call Option Price: ${call_price:.2f} per share")
-
-    if st.button("Calculate Put Option Price"):
-        put_price = bsm.bs_put(S, K, T, r, sig)
-        st.success(f"Put Option Price: ${put_price:.2f}  per share")
-
+if st.session_state["option_submitted"]:
+    if option_type == "Call":
+        option_price = bsm.bs_call(S, K, T, r, sig)
+        st.success(f"The price of the Call Option is: ${option_price:.2f} per share")
+    else:
+        option_price = bsm.bs_put(S, K, T, r, sig)
+        st.success(f"The price of the Put Option is: ${option_price:.2f} per share")
 
     
     
