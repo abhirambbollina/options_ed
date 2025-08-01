@@ -22,11 +22,17 @@ if "sig" not in st.session_state:
     st.session_state["sig"] = 0.0
 if "option_submitted" not in st.session_state:
     st.session_state["option_submitted"] = False
+if "option_type" not in st.session_state:
+    st.session_state["option_type"] = "Call"
+if "K" not in st.session_state:
+    st.session_state["K"] = None
+if "T" not in st.session_state:
+    st.session_state["T"] = None
 
 
 ticker_input = st.text_input("Enter stock ticker (e.g., AAPL):", value=st.session_state["ticker"])
 if st.button("Submit"):
-    if ticker_input and (ticker_input != st.session_state["ticker"] or not st.session_state["ticker_submitted"]):
+    if ticker_input:
         end_date = datetime.today()
         start_date = end_date - timedelta(days=30)
 
@@ -41,7 +47,6 @@ if st.button("Submit"):
             st.session_state["ticker_submitted"] = True
             st.session_state["r"] = float(yf.Ticker("^TNX").history(period="1d")["Close"].iloc[-1]/100)
             st.session_state["sig"] = bsm.historical_volatility(yf.download(st.session_state["ticker"], period="6mo", interval="1d"))
-
     else:
         st.error("Please enter a valid ticker.")
 
@@ -53,28 +58,36 @@ if st.session_state["ticker_submitted"] and st.session_state["data"] is not None
 
     st.subheader("Black-Scholes Option Pricing")
     
-    option_type = st.selectbox("Select Option Type:", options=["Call", "Put"], key="option_type")
+    option_type_input = st.selectbox("Select Option Type:", options=["Call", "Put"])
 
     S = float(st.session_state["data"]["Close"].iloc[-1])
     r = st.session_state["r"]
     sig = st.session_state["sig"]
-    K = float(st.number_input("Strike Price (K):", value=float(S), step=2.5))
-    T = float(st.number_input("Time to Maturity (in years):", value=1.0, step=0.01))
+    K_input = st.number_input("Strike Price (K):", value=S, step=2.5)
+    T_date = st.date_input("Time to Maturity (T):", value=datetime.today() + timedelta(days=30)) 
+    T_input = (datetime(T_date.year, T_date.month, T_date.day) - datetime.today()).days / 365.0  # Convert days to years
 
     if st.button("Calculate Option Price"):
-        if K and T and K >= 0 and T > 0 and option_type in ["Call", "Put"]:
+        if K_input >= 0 and T_input > 0 and option_type_input in ["Call", "Put"]:
             st.session_state["option_submitted"] = True
+            st.session_state["K"] = K_input
+            st.session_state["T"] = T_input
+            st.session_state["option_type"] = option_type_input
         else:
-            st.error("Invalid input for Strike Price or Time to Maturity. Please enter valid values.")
+            st.error("Invalid input")
             st.session_state["option_submitted"] = False
     
 if st.session_state["option_submitted"]:
+    K = float(st.session_state["K"])
+    T = float(st.session_state["T"])
+    option_type = st.session_state["option_type"]
     if option_type == "Call":
         option_price = bsm.bs_call(S, K, T, r, sig)
         st.success(f"The price of the Call Option is: ${option_price:.2f} per share")
     else:
         option_price = bsm.bs_put(S, K, T, r, sig)
         st.success(f"The price of the Put Option is: ${option_price:.2f} per share")
+    
 
     
     
