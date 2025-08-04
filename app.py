@@ -1,6 +1,4 @@
 import streamlit as st
-import matplotlib.pyplot as plt
-import pandas as pd
 import stockchart as scht
 import black_scholes as bsm
 import yfinance as yf
@@ -99,17 +97,21 @@ if st.session_state["option_submitted"]:
     K = float(st.session_state["K"])
     T = float(st.session_state["T"])
     option_type = st.session_state["option_type"]
-    if option_type == "Call":
-        call_row = chain.calls[chain.calls["strike"] == K]
-        option_price = bsm.bs_call(S, K, T, r, sig)
-        st.success(f"The price of the Black-Scholes Call Option is: ${option_price:.2f} per share")
-        st.write(f"Market Mid Price of Call Option: {(call_row["bid"].values[0] + call_row["ask"].values[0]) / 2:.2f} per share")
-    else:
-        put_row = chain.puts[chain.puts["strike"] == K]
-        option_price = bsm.bs_put(S, K, T, r, sig)
-        st.success(f"The price of the Black-Scholes Put Option is: ${option_price:.2f} per share")
-        st.write(f"Market Mid Price of Put Option: {(put_row['bid'].values[0] + put_row['ask'].values[0]) / 2:.2f} per share")
     
+    
+    option_price = bsm.bs_option(S, K, T, r, sig, option_type)
+    st.success(f"The price of the Black-Scholes {option_type} Option is: ${option_price:.2f} per share")
+    st.write(f"A contract represents 100 shares, the price of a contract is: ${option_price * 100:.2f}")
+    if option_type == "Call":
+        option_row = chain.calls[chain.calls["strike"] == K]
+    else:
+        option_row = chain.puts[chain.puts["strike"] == K]
+    st.write(f"Market Prices of {option_type} Option:")
+    st.write(f"Bid: {option_row['bid'].values[0]:.2f}")
+    st.write(f"Mid: {(option_row["bid"].values[0] + option_row["ask"].values[0]) / 2:.2f}")
+    st.write(f"Ask: {option_row['ask'].values[0]:.2f}")
+
+        
 
     
     
