@@ -2,6 +2,8 @@ import streamlit as st
 import stockchart as scht
 import black_scholes as bsm
 import yfinance as yf
+import pandas as pd
+import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 
 @st.cache_data
@@ -136,9 +138,20 @@ if st.session_state["option_submitted"]:
     else:
         option_row = chain['puts'][chain['puts']["strike"] == K]
     st.write(f"Market Prices of {option_type} Option:")
-    st.write(f"Bid: {option_row['bid'].values[0]:.2f}")
-    st.write(f'Mid: {(option_row["bid"].values[0] + option_row["ask"].values[0]) / 2:.2f}')
-    st.write(f"Ask: {option_row['ask'].values[0]:.2f}")
+    bid = option_row['bid'].values[0]
+    ask = option_row['ask'].values[0]
+    mid = (bid + ask) / 2
+    st.write(f"Bid: {bid:.2f}")
+    st.write(f'Mid: {mid:.2f}')
+    st.write(f"Ask: {ask:.2f}")
+
+    st.write("### Price Comparison")
+    fig, ax = plt.subplots()
+    ax.bar(['Black-Scholes', 'Market Mid'], [option_price, mid])
+    ax.set_ylabel('Price ($)')
+    ax.set_ylim(bottom=0.1)
+    st.pyplot(fig)
+    st.write(f"Difference (BS - Market): ${option_price - mid:.2f}")
 
         
 
